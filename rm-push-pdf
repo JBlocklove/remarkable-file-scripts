@@ -1,0 +1,9 @@
+#!/bin/sh
+
+source functions
+
+doc_uuid=`cat /proc/sys/kernel/random/uuid`
+doc=$1
+parent=$2
+
+

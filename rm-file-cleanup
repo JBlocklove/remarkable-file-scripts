@@ -1,0 +1,19 @@
+#!/bin/sh
+
+xochitl_loc="/home/root/.local/share/remarkable/xochitl"
+
+flush_deleted_files() {
+	deleted_uuids=()
+	for filename in $xochitl_loc/*.metadata ; do
+		deleted=`sed -e 's/ //g' -e 's/\"//g' $filename | awk -F '[:,]' '{if ($1 == "deleted") print $2;}'`
+		if [[ $deleted == "true" ]]; then
+			deleted_uuids+=(`basename $filename .metadata`)
+		fi
+	done
+	for filename in ${deleted_uuids[@]} ; do
+		rm -rf $xochitl_loc/$filename.*
+	done
+}
+
+flush_deleted_files
+

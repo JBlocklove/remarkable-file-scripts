@@ -1,0 +1,70 @@
+# vi: ft=sh
+
+xochitl_loc="/home/root/.local/share/remarkable/xochitl"
+
+create_dir_metadata() {
+	#creates metadata for new directory under $1 with name $2 in directory $3
+	dir_uuid=`new_uuid`
+	cp dir_metadata.txt $2/$dir_uuid.metadata
+	sed -i -e "s/PARENT_NAME/$1/" -e "s/DIR_NAME/$2/" $2/$dir_uuid.metadata
+}
+
+create_dir_content() {
+	#creates content for new rm directory $1 in directory location $2
+	echo "{}" > $2/$1.content
+}
+
+create_doc_metadata() {
+	#creates metadata and pagedata files for pdf $1 under parent $2 in directory $3
+	mod_time=`date +%s`
+	cp doc_metadata.txt $3/$1.metadata
+	sed -i -e "s/PARENT_NAME/$2/" -e "s/DOC_NAME/$3/" -e "s/MOD_TIME/$mod_time/" $3/$1.metadata
+}
+
+create_doc_content() {
+	#creates content files for pdf $1 in directory $2
+	page_uuid=`new_uuid`
+	size_in_bytes=`stat -c %s $2/$1.pdf`
+	cp doc_content.txt $2/$1.content
+	sed -i -e "s/PAGE_UUID/$page_uuid/" -e "s/SIZE_IN_BYTES/$size_in_bytes/" $2/$1.content
+}
+
+find_uuid() {
+	#finds uuid of type $2 with name $1
+	if [[ $2 == "dir" ]]; then
+		for filename in $xochitl_loc/*.metadata ; do
+			doc_name=`sed -e 's/ //g' -e 's/\"//g' $filename | awk -F '[:,]' '{if ($1 == "visibleName") print $2;}'`
+			doc_type=`sed -e 's/ //g' -e 's/\"//g' $filename | awk -F '[:,]' '{if ($1 == "type") print $2;}'`
+			if [[ $doc_name == $1 && $doc_type == "CollectionType" ]]; then
+				return `basename $filename .metadata`
+			fi
+		done
+	else
+		for filename in $xochitl_loc/*.metadata ; do
+			doc_name=`sed -e 's/ //g' -e 's/\"//g' $filename | awk -F '[:,]' '{if ($1 == "visibleName") print $2;}'`
+			doc_type=`sed -e 's/ //g' -e 's/\"//g' $filename | awk -F '[:,]' '{if ($1 == "type") print $2;}'`
+			if [[ $doc_name == $1 && $doc_type == "CollectionType" ]]; then
+				return `basename $filename .metadata`
+			fi
+		done
+	fi
+}
+
+new_uuid() {
+	return `cat /proc/sys/kernel/random/uuid`
+}
+
+rm_make_dir() {
+	dir_arr=($(echo "$1" | sed -e 's|/|\n|g' | awk -F '\n' '{ print $1 }'))
+	for ((i=1; i<=${#dir_arr[@]}; i++)) ; do
+		parent=${dir_arr[$i-1]}
+		if [[ "$parent" != "" ]]; then
+			parent_uuid=find_uuids $parent "dir"
+			if [[ $parent_uuid == "" ]]; then
+				parent_uuid=`new_uuid`
+			fi
+		fi
+		create_dir_metadata $parent_uuid ${dir_arr[$i]} $xochitl_loc
+		create_dir_content ${dir_arr[$i]} $xochitl_loc
+	done
+}
